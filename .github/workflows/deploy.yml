@@ -16,12 +16,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8 ' \
-        git clone https://github.com/nope-all/test-ci-cd.git && cd test-ci-cd && \
-        sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example && \
-        sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example && \
-        sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{secrets.DB_ROOT}}/" .env.example && \
-        sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{secrets.DB_ROOT}}/" .env.example '
+    - run: apt install -y sshpass && sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8
+        'git clone https://github.com/nope-all/test-ci-cd.git'
    # - run: sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example
    # - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example
    # - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{secrets.DB_ROOT}}/" .env.example
@@ -36,4 +32,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8 "docker build -t $APP_NAME ."
+    - run: sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8 "cd test-ci-cd && docker build -t $APP_NAME ."
