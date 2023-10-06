@@ -4,49 +4,35 @@ on:
     branches: [ "main" ]
 env:
   # Setting an environment variable with the value of a configuration variable
-  APP_NAME: ${{ vars.APP_NAME }}
-  DB_HOST: ${{ vars.DB_HOST }}
-  DB_DATABASE: ${{ vars.DB_DATABASE }}
-  DB_ROOT: ${{ vars.DB_ROOT }}
-  DB_USERNAME: ${{ vars.DB_USERNAME }}
-  DB_PASSWORD: ${{ vars.DB_PASSWORD }}
-  LOCATION_FILE: ${{ vars.LOCATION_FILE }}
+  APP_NAME: ubuntu-ci-cd
+  DB_HOST: mysql-ci-cd
+  DB_DATABASE: laravel-starter
+  LOCATION_FILE: /var/www/html/public/
   
 jobs:
   prepare-env:
     name: prepare-env
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
-    - run: sed -i "s/DB_HOST=.*/DB_HOST=${{ vars.DB_HOST }}/" .env.example
-    - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=${{ vars.DB_DATABASE }}/" .env.example
-    - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{ vars.DB_ROOT }}/" .env.example
-    - run: sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{ vars.DB_ROOT }}/" .env.example
-    - run: docker network create ${{ vars.DB_DATABASE }}
-    - run: sudo docker run -itd --name ${{ vars.DB_HOST }} -e MYSQL_ROOT_PASSWORD=${{ vars.DB_ROOT }} -e MYSQL_DATABASE=${{ vars.DB_DATABASE }} -e MYSQL_USERNAME=${{ vars.DB_USERNAME }} -e MYSQL_PASSWORD=${{ vars.DB_PASSWORD }} --net ${{ vars.DB_DATABASE }} mysql:8
+
+    - run: sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8 ' \
+        sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example && \
+        sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example && \
+        sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{secrets.DB_ROOT}}/" .env.example && \
+        sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{secrets.DB_ROOT}}/" .env.example '
+   # - run: sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example
+   # - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example
+   # - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{secrets.DB_ROOT}}/" .env.example
+   # - run: sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{secrets.DB_ROOT}}/" .env.example
+   # - run: docker network create $DB_DATABASE
+   # - run: sudo docker run -itd --name $DB_HOST -e MYSQL_ROOT_PASSWORD=${{secrets.DB_ROOT}} -e MYSQL_DATABASE=$DB_DATABASE -e MYSQL_USERNAME=${{secrets.DB_USERNAME}} -e MYSQL_PASSWORD=${{secrets.DB_PASSWORD}} --net $DB_DATABASE mysql:8
 
   build:
     needs: prepare-env
     name: build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
-    - run: sudo docker build -t ${{ vars.APP_NAME }} .
-
-  deploy:
-    needs: [prepare-env, build]
-    name: deploy
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v3
-
-    - run: docker run -itd --name ${{ vars.APP_NAME }} -p 8012:80 --net ${{ vars.DB_DATABASE }} ${{ vars.APP_NAME }}
-    - run: docker exec ${{ vars.APP_NAME }} php artisan migrate --seed
-    - run: docker exec ${{ vars.APP_NAME }} php artisan storage:link
-    - run: docker exec ${{ vars.APP_NAME }} chmod -R 777 storage/
-    - run: docker exec ${{ vars.APP_NAME }} sed -i "s|/var/www/html/prod/|${{ vars.LOCATION_FILE }}|" /etc/nginx/sites-enabled/default
-    - run: docker exec ${{ vars.APP_NAME }} service php8.1-fpm start
-    - run: docker exec ${{ vars.APP_NAME }} service php8.1-fpm restart
-    - run: docker exec ${{ vars.APP_NAME }} service nginx restart
+    - run: sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8 "docker build -t $APP_NAME ."
