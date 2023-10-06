@@ -2,7 +2,10 @@ name: Deploy Laravel
 on:
   push:
     branches: [ "main" ]
-
+env:
+  # Setting an environment variable with the value of a configuration variable
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  
 jobs:
   prepare-env:
     name: prepare-env
@@ -10,32 +13,34 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - run: sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example
-    - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example
-    - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=$DB_ROOT/" .env.example
-    - run: sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_ROOT/" .env.example
-    - run: sudo docker network create $DB_DATABASE
-    - run: sudo docker run -itd --name $DB_HOST -e MYSQL_ROOT_PASSWORD=$DB_ROOT -e MYSQL_DATABASE=$DB_DATABASE -e MYSQL_USERNAME=$DB_USERNAME -e MYSQL_PASSWORD=$DB_PASSWORD --net $DB_DATABASE mysql:8
+    - run: sed -i "s/DB_HOST=.*/DB_HOST=${{ vars.DB_HOST }}/" .env.example
+    - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=${{ vars.DB_DATABASE }}/" .env.example
+    - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{ vars.DB_ROOT }}/" .env.example
+    - run: sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{ vars.DB_ROOT }}/" .env.example
+    - run: sudo docker network create ${{ vars.DB_DATABASE }}
+    - run: sudo docker run -itd --name ${{ vars.DB_HOST }} -e MYSQL_ROOT_PASSWORD=${{ vars.DB_ROOT }} -e MYSQL_DATABASE=${{ vars.DB_DATABASE }} -e MYSQL_USERNAME=${{ vars.DB_USERNAME }} -e MYSQL_PASSWORD=${{ vars.DB_PASSWORD }} --net ${{ vars.DB_DATABASE }} mysql:8
 
   build:
+    needs: prepare-env
     name: build
     runs-on: self-hosted[github-cicd]
     steps:
     - uses: actions/checkout@v3
 
-    - run: sudo docker build -t $APP_NAME .
+    - run: sudo docker build -t ${{ vars.APP_NAME }} .
 
   deploy:
+    needs: [prepare-env, build]
     name: deploy
     runs-on: self-hosted[github-cicd]
     steps:
     - uses: actions/checkout@v3
 
-    - run: docker run -itd --name $APP_NAME -p 8012:80 --net $DB_DATABASE $APP_NAME
-    - run: docker exec $APP_NAME php artisan migrate --seed
-    - run: docker exec $APP_NAME php artisan storage:link
-    - run: docker exec $APP_NAME chmod -R 777 storage/
-    - run: docker exec $APP_NAME sed -i "s|/var/www/html/prod/|$LOCATION_FILE|" /etc/nginx/sites-enabled/default
-    - run: docker exec $APP_NAME service php8.1-fpm start
-    - run: docker exec $APP_NAME service php8.1-fpm restart
-    - run: docker exec $APP_NAME service nginx restart
+    - run: docker run -itd --name ${{ vars.APP_NAME }} -p 8012:80 --net ${{ vars.DB_DATABASE }} ${{ vars.APP_NAME }}
+    - run: docker exec ${{ vars.APP_NAME }} php artisan migrate --seed
+    - run: docker exec ${{ vars.APP_NAME }} php artisan storage:link
+    - run: docker exec ${{ vars.APP_NAME }} chmod -R 777 storage/
+    - run: docker exec ${{ vars.APP_NAME }} sed -i "s|/var/www/html/prod/|${{ vars.LOCATION_FILE }}|" /etc/nginx/sites-enabled/default
+    - run: docker exec ${{ vars.APP_NAME }} service php8.1-fpm start
+    - run: docker exec ${{ vars.APP_NAME }} service php8.1-fpm restart
+    - run: docker exec ${{ vars.APP_NAME }} service nginx restart
