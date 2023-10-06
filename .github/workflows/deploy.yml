@@ -9,7 +9,7 @@ env:
 jobs:
   prepare-env:
     name: prepare-env
-    runs-on: self-hosted[github-cicd]
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v3
     
@@ -23,7 +23,7 @@ jobs:
   build:
     needs: prepare-env
     name: build
-    runs-on: self-hosted[github-cicd]
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v3
 
@@ -32,7 +32,7 @@ jobs:
   deploy:
     needs: [prepare-env, build]
     name: deploy
-    runs-on: self-hosted[github-cicd]
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v3
 
