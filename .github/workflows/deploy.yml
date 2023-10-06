@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: apt install -y sshpass && sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8
+    - run: sudo apt install -y sshpass && sshpass -p ${{secrets.SSH}} ssh -o PasswordAuthentication=yes -p 22 root@192.168.1.8
         'git clone https://github.com/nope-all/test-ci-cd.git'
    # - run: sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example
    # - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example
