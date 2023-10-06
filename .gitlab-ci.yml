@@ -1,0 +1,39 @@
+stages:
+  - deploy
+
+deploy-db:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - sudo docker network create $DB_DATABASE
+    - sudo docker run -itd --name $DB_HOST -e MYSQL_ROOT_PASSWORD=$DB_ROOT -e MYSQL_DATABASE=$DB_DATABASE -e MYSQL_USERNAME=$DB_USERNAME -e MYSQL_PASSWORD=$DB_PASSWORD --net $DB_DATABASE mysql:8
+
+build:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - sed -i "s/DB_HOST=.*/DB_HOST=$DB_HOST/" .env.example
+    - sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env.example
+    - sed -i "s/DB_USERNAME=.*/DB_USERNAME=$DB_ROOT/" .env.example
+    - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_ROOT/" .env.example
+  script:
+    - sudo docker build -t $APP_NAME .
+
+deploy-app:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker run -itd --name $APP_NAME -p 8012:80 --net $DB_DATABASE $APP_NAME
+    - docker exec $APP_NAME php artisan migrate --seed
+    - docker exec $APP_NAME php artisan storage:link
+    - docker exec $APP_NAME chmod -R 777 storage/
+    - docker exec $APP_NAME sed -i "s|/var/www/html/prod/|$LOCATION_FILE|" /etc/nginx/sites-enabled/default
+    - docker exec $APP_NAME service php8.1-fpm start
+    - docker exec $APP_NAME service php8.1-fpm restart
+    - docker exec $APP_NAME service nginx restart
