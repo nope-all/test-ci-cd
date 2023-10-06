@@ -23,7 +23,7 @@ jobs:
     - run: sed -i "s/DB_DATABASE=.*/DB_DATABASE=${{ vars.DB_DATABASE }}/" .env.example
     - run: sed -i "s/DB_USERNAME=.*/DB_USERNAME=${{ vars.DB_ROOT }}/" .env.example
     - run: sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${{ vars.DB_ROOT }}/" .env.example
-    - run: sudo docker network create ${{ vars.DB_DATABASE }}
+    - run: docker network create ${{ vars.DB_DATABASE }}
     - run: sudo docker run -itd --name ${{ vars.DB_HOST }} -e MYSQL_ROOT_PASSWORD=${{ vars.DB_ROOT }} -e MYSQL_DATABASE=${{ vars.DB_DATABASE }} -e MYSQL_USERNAME=${{ vars.DB_USERNAME }} -e MYSQL_PASSWORD=${{ vars.DB_PASSWORD }} --net ${{ vars.DB_DATABASE }} mysql:8
 
   build:
